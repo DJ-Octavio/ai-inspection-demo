@@ -1,0 +1,14 @@
+# AI 智检 · Render 部署依赖
+# PyTorch CPU-only (smaller, faster install)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
+torchvision==0.17.0+cpu
+
+flask>=3.0
+flask-cors>=4.0
+numpy>=1.24
+Pillow>=10.0
+opencv-python-headless>=4.8
+timm==0.9.16
+anomalib==2.5.0
+lightning>=2.0

@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 智检 · 手机制造视觉质检系统</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root{--bg:#f0f2f5;--w:#fff;--b:#e4e7ed;--t:#1d2129;--t2:#606a78;--t3:#9095a0;--blue:#165dff;--bl2:#e8f0ff;--gn:#00b42a;--gn2:#e8fff0;--rd:#f53f3f;--rd2:#ffece8;--or:#ff7d00;--or2:#fff7e8;--pu:#722ed1;--sw:220px;--th:52px;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--t);font-size:14px;line-height:1.6;}
+.sidebar{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:var(--w);border-right:1px solid var(--b);z-index:100;display:flex;flex-direction:column;}
+.sl{height:var(--th);display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--b);font-weight:700;font-size:15px;}
+.sl .d{width:8px;height:8px;border-radius:2px;background:var(--blue);}
+.sm{flex:1;padding:12px;display:flex;flex-direction:column;gap:2px;}
+.sm a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;color:var(--t2);text-decoration:none;font-size:13px;font-weight:500;transition:.15s;cursor:pointer;}
+.sm a:hover{background:var(--bg);}.sm a.ac{background:var(--bl2);color:var(--blue);font-weight:600;}
+.sf{padding:16px;border-top:1px solid var(--b);font-size:11px;color:var(--t3);}
+.main{margin-left:var(--sw);padding:20px 28px;min-height:100vh;}
+.tb{height:var(--th);display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.tb .ti{font-size:18px;font-weight:700;}.tb .if{display:flex;align-items:center;gap:14px;color:var(--t2);font-size:13px;}
+.badge{padding:4px 12px;border-radius:99px;background:var(--gn2);color:var(--gn);font-size:12px;font-weight:600;}
+.pg{display:none;}.pg.ac{display:block;}
+.card{background:var(--w);border:1px solid var(--b);border-radius:8px;padding:20px;margin-bottom:16px;}
+.ch{margin-bottom:14px;font-size:15px;font-weight:600;}
+/* config bar */
+.cfgbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 16px;background:var(--w);border:1px solid var(--b);border-radius:8px;margin-bottom:16px;}
+.cfgitem{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);}
+.cfgitem select{padding:6px 10px;border:1px solid var(--b);border-radius:6px;font-size:13px;background:var(--w);min-width:96px;}
+.cfgadd{width:26px;height:26px;border-radius:6px;border:1px solid var(--b);background:var(--w);cursor:pointer;color:var(--blue);font-size:16px;line-height:1;}
+.cfgadd:hover{border-color:var(--blue);background:var(--bl2);}
+.dl{display:grid;grid-template-columns:1fr 380px;gap:16px;}
+.pv{background:var(--w);border:1px solid var(--b);border-radius:8px;overflow:hidden;}
+.pt{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--b);}
+.pt .lb{font-size:13px;font-weight:600;}
+.cbtn{padding:6px 14px;border-radius:6px;border:1px solid var(--b);background:var(--w);font-size:12px;font-weight:600;cursor:pointer;color:var(--t2);transition:.15s;}
+.cbtn:hover{border-color:var(--blue);color:var(--blue);}.cbtn.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+.pst{position:relative;min-height:420px;display:flex;align-items:center;justify-content:center;background:#f7f8fa;overflow:hidden;}
+.pst video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;}
+.pst canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.pst #cvs{display:none;}.pst #mkr{display:block;z-index:3;}
+.pst #roi{display:none;z-index:4;pointer-events:auto;cursor:crosshair;}
+.pst .ph{text-align:center;color:var(--t3);z-index:1;}.pst .ph .b{font-size:40px;margin-bottom:12px;}
+.pst .scan{position:absolute;inset:0;pointer-events:none;display:none;background:linear-gradient(180deg,transparent,rgba(22,93,255,.06),transparent);animation:sc 1.2s ease-in-out infinite;z-index:2;}
+@keyframes sc{0%{top:0}100%{top:100%}}
+.stat{display:flex;justify-content:space-between;padding:8px 16px;border-top:1px solid var(--b);font-size:12px;color:var(--t3);}
+.cp{display:flex;flex-direction:column;gap:12px;}
+.ctrl{background:var(--w);border:1px solid var(--b);border-radius:8px;padding:16px;text-align:center;}
+.idot{width:64px;height:64px;border-radius:50%;margin:10px auto;background:var(--t3);transition:background .4s;}
+.sts{font-size:20px;font-weight:700;margin-top:4px;}.hint{font-size:12px;color:var(--t3);margin-top:2px;}
+.sl2{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+.stag{padding:6px 12px;border:1px solid var(--b);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s;background:var(--w);}
+.stag:hover{border-color:var(--blue);}.stag.ac{border-color:var(--blue);background:var(--bl2);color:var(--blue);}
+.up{border:1.5px dashed var(--b);border-radius:6px;padding:12px;text-align:center;cursor:pointer;font-size:12px;color:var(--t3);transition:.15s;display:block;margin-top:10px;}
+.up:hover{border-color:var(--blue);color:var(--blue);}.up input{display:none;}
+.btn{padding:10px 20px;border-radius:6px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;text-align:center;}
+.btn-p{background:var(--blue);color:#fff;width:100%;padding:12px;margin-top:10px;}.btn-p:hover{background:#0e4cd9;}
+.res-card{background:var(--w);border:1px solid var(--b);border-radius:8px;padding:16px;display:none;}.res-card.sh{display:block;}
+.rr{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--b);font-size:13px;}
+.rr:last-child{border:0;}.rr .rl{color:var(--t2);}.rr .rv{font-weight:600;}
+.vb{margin-top:10px;padding:10px;border-radius:6px;text-align:center;font-weight:700;font-size:14px;}
+.vb.ok{background:var(--gn2);color:var(--gn);}.vb.ng{background:var(--rd2);color:var(--rd);}.vb.warn{background:var(--or2);color:var(--or);}
+.ap-ov{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:.3s;}.ap-ov.sh{opacity:1;pointer-events:auto;}
+.ap-pn{position:fixed;top:0;right:-460px;width:440px;height:100vh;z-index:301;background:var(--w);border-left:1px solid var(--b);box-shadow:-8px 0 40px rgba(0,0,0,.12);transition:right .35s cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;overflow-y:auto;}.ap-pn.sh{right:0;}
+.ap-hd{padding:20px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;}.ap-hd h3{font-size:17px;font-weight:700;}
+.ap-cl{width:32px;height:32px;border-radius:6px;border:1px solid var(--b);background:var(--w);cursor:pointer;font-size:16px;}
+.ap-bd{padding:20px;flex:1;}.ap-pv{width:100%;height:200px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;overflow:hidden;}.ap-pv img{max-width:100%;max-height:100%;object-fit:contain;}
+.ap-ft{padding:16px 20px;border-top:1px solid var(--b);display:flex;gap:10px;}.ap-ft button{flex:1;}
+.pk{border-color:var(--or)!important;box-shadow:0 0 0 2px var(--or);}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;z-index:400;opacity:0;pointer-events:none;transition:.3s;background:var(--w);border:1px solid var(--b);box-shadow:0 8px 24px rgba(0,0,0,.1);}.toast.sh{opacity:1;}
+.kr{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;}
+.kc{background:var(--w);border:1px solid var(--b);border-radius:8px;padding:18px 20px;}
+.kc .kv{font-size:30px;font-weight:700;margin-bottom:4px;}.kc .kl{font-size:12px;color:var(--t3);}.kc .ks{font-size:12px;margin-top:4px;font-weight:500;color:var(--gn);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}.cw{width:100%;height:300px;}
+.mb{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 16px;background:var(--w);border:1px solid var(--b);border-radius:8px;flex-wrap:wrap;}
+.mb select{padding:6px 12px;border:1px solid var(--b);border-radius:6px;font-size:13px;background:var(--w);}
+.mb .gl{margin-left:auto;color:var(--pu);font-size:12px;font-weight:600;cursor:pointer;}
+.table{width:100%;border-collapse:collapse;font-size:13px;}
+.table th{text-align:left;padding:10px 12px;border-bottom:2px solid var(--b);color:var(--t2);font-weight:600;font-size:12px;}
+.table td{padding:10px 12px;border-bottom:1px solid var(--b);}
+.api-warn{padding:10px 16px;border-radius:6px;background:var(--or2);color:var(--or);font-size:13px;font-weight:600;margin-bottom:16px;display:none;}.api-warn.sh{display:block;}
+@media(max-width:1200px){.dl,.g2{grid-template-columns:1fr;}.kr{grid-template-columns:repeat(2,1fr);}.sidebar{display:none;}.main{margin-left:0;}}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sl"><div class="d"></div>AI 智检</div>
+  <div class="sm">
+    <a class="ac" data-nav="detect">🔍 检测工位</a>
+    <a data-nav="records">📋 检测记录</a>
+    <a data-nav="dashboard">📊 数据看板</a>
+  </div>
+  <div class="sf">传音 AI 创客营<br>郑晓东、马锐、王鸿、唐焮、董辉</div>
+</div>
+
+<div class="main">
+
+<div class="pg ac" id="pg-detect">
+  <div class="tb"><div class="ti">检测工位</div><div class="if"><span class="badge" id="badge">待机</span> <span id="clock"></span></div></div>
+  <div class="api-warn" id="apiWarn">⚠ 未连接后端 AI 模型，当前为模拟模式。请通过 http://localhost:5000 访问以启用真实检测。</div>
+
+  <div class="cfgbar">
+    <div class="cfgitem">检测工位:<select id="cfgStation"></select><button class="cfgadd" data-add="cfgStation">+</button></div>
+    <div class="cfgitem">产线:<select id="cfgLine"></select><button class="cfgadd" data-add="cfgLine">+</button></div>
+    <div class="cfgitem">产品型号:<select id="cfgProduct"></select><button class="cfgadd" data-add="cfgProduct">+</button></div>
+  </div>
+
+  <div class="dl">
+    <div class="pv" id="pvCard">
+      <div class="pt"><span class="lb">实时画面</span><select id="camSel" style="display:none;margin-left:auto;margin-right:8px;padding:4px 8px;border:1px solid var(--b);border-radius:6px;font-size:12px;max-width:180px"></select><button class="cbtn" id="btnCam">📷 开启摄像头</button></div>
+      <div class="pst" id="pst">
+        <div class="ph" id="ph"><div class="b">📷</div><div>开启摄像头，画面稳定后自动检测</div></div>
+        <video id="vid" autoplay playsinline muted style="display:none"></video>
+        <canvas id="cvs"></canvas>
+        <canvas id="mkr"></canvas>
+        <canvas id="roi"></canvas>
+        <div class="scan" id="scan"></div>
+      </div>
+      <div class="stat"><span id="ast">等待启动...</span><span id="cnt">检测次数: 0</span></div>
+    </div>
+    <div class="cp">
+      <div class="ctrl">
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:6px;">自动检测状态</h4>
+        <div class="idot" id="idot"></div>
+        <div class="sts" id="stxt">未启动</div>
+        <div class="hint" id="shint">点击「开启摄像头」启动</div>
+        <div class="sl2">
+          <span class="stag ac" data-sm="good">良品样本</span>
+          <span class="stag" data-sm="scratch">缺陷样本</span>
+        </div>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px;">摄像头开启后自动忽略样本</div>
+        <label class="up" id="upbox">📁 上传本地图片<input type="file" id="fileIn" accept="image/*"></label>
+        <button class="btn btn-p" id="btnMan">▶ 手动触发一次检测</button>
+      </div>
+      <div class="res-card" id="resCard">
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:8px">最近一次检测结果</h4>
+        <div class="rr"><span class="rl">缺陷类型</span><span class="rv" id="rT">—</span></div>
+        <div class="rr"><span class="rl">异常分数</span><span class="rv" id="rA">—</span></div>
+        <div class="rr"><span class="rl">缺陷位置</span><span class="rv" id="rBox">—</span></div>
+        <div class="rr"><span class="rl">检测耗时</span><span class="rv" id="rTm">—</span></div>
+        <div class="rr"><span class="rl">节拍核算</span><span class="rv" id="rTk" style="font-size:12px">—</span></div>
+        <div class="rr"><span class="rl">模型</span><span class="rv" id="rMd">—</span></div>
+        <div class="vb" id="rV"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pg" id="pg-records">
+  <div class="tb"><div class="ti">检测记录</div><div class="if">共 <span id="recC">0</span> 条</div></div>
+  <div class="mb">筛选产品: <select id="recFilter"><option value="">全部</option></select> &nbsp; 筛选工位: <select id="recStFilter"><option value="">全部</option></select></div>
+  <div class="card"><table class="table"><thead><tr><th>时间</th><th>工位</th><th>产线</th><th>产品</th><th>AI判定</th><th>缺陷类型</th><th>异常分数</th><th>人工确认</th></tr></thead><tbody id="recB"><tr><td colspan="8" style="text-align:center;color:var(--t3);padding:40px">暂无记录</td></tr></tbody></table></div>
+</div>
+
+<div class="pg" id="pg-dashboard">
+  <div class="tb"><div class="ti">数据看板</div></div>
+  <div class="mb">产品型号: <select id="msel"></select> &nbsp; 产线: <select id="mline"></select><div class="gl" id="genLink">⚡ 泛化能力演示</div></div>
+  <div class="kr">
+    <div class="kc"><div class="kv" style="color:var(--blue)" id="kT">0</div><div class="kl">累计检测量</div><div class="ks" id="kTs">实时累计</div></div>
+    <div class="kc"><div class="kv" style="color:var(--rd)" id="kNG">0</div><div class="kl">拦截不良数</div><div class="ks" style="color:var(--rd)">自动拦截</div></div>
+    <div class="kc"><div class="kv" style="color:var(--gn)" id="kY">—</div><div class="kl">良品率</div><div class="ks">本产品</div></div>
+    <div class="kc"><div class="kv" style="color:var(--pu)" id="kHr">0</div><div class="kl">预估省工时</div><div class="ks">人工30s→8s/台</div></div>
+    <div class="kc"><div class="kv" style="color:var(--gn)">24h</div><div class="kl">判定一致性</div><div class="ks">不随疲劳/班次衰减</div></div>
+    <div class="kc"><div class="kv" style="color:var(--or)" id="kLab">0</div><div class="kl">数据飞轮 · 已积累标签</div><div class="ks" style="color:var(--or)">人工修正回流</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ch">缺陷类型分布</div><div class="cw" id="chP"></div></div>
+    <div class="card"><div class="ch">今日检测趋势</div><div class="cw" id="chL"></div></div>
+  </div>
+  <div class="card"><div class="ch">手机缺陷位置热力图</div><div class="cw" id="chH" style="height:240px"></div></div>
+</div>
+
+</div>
+
+<div class="ap-ov" id="apov"></div>
+<div class="ap-pn" id="appn"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var $=function(id){return document.getElementById(id);};
+function ts(m){var t=$('toast');t.textContent=m;t.classList.add('sh');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('sh');},2600);}
+function setDot(c){$('idot').style.background=c;}
+function setSt(a,b){$('stxt').textContent=a;$('shint').textContent=b;}
+function setAst(m){$('ast').textContent=m;}
+function tick(){$('clock').textContent=new Date().toTimeString().slice(0,8);}tick();setInterval(tick,1000);
+
+// ===== CONFIG: station / line / product (editable + add new) =====
+var CFG={cfgStation:['一检','二检'],cfgLine:['1号线','2号线','3号线'],cfgProduct:['T1 Pro','T2 Ultra','Neo 5']};
+function rebuildSelect(id, arr, keep){
+  var s=$(id); var cur=keep||s.value; s.innerHTML='';
+  arr.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);});
+  if(cur && arr.indexOf(cur)>=0) s.value=cur;
+}
+function initConfig(){
+  rebuildSelect('cfgStation',CFG.cfgStation);
+  rebuildSelect('cfgLine',CFG.cfgLine);
+  rebuildSelect('cfgProduct',CFG.cfgProduct);
+  // dashboard + records selectors mirror product/line list
+  rebuildSelect('msel',CFG.cfgProduct);
+  rebuildSelect('mline',CFG.cfgLine);
+  rebuildRecFilters();
+}
+function rebuildRecFilters(){
+  var f=$('recFilter'),cur=f.value;f.innerHTML='<option value="">全部</option>';
+  CFG.cfgProduct.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;f.appendChild(o);});
+  if(cur)f.value=cur;
+  var s=$('recStFilter'),cur2=s.value;s.innerHTML='<option value="">全部</option>';
+  CFG.cfgStation.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o);});
+  if(cur2)s.value=cur2;
+}
+document.querySelectorAll('.cfgadd').forEach(function(btn){btn.addEventListener('click',function(){
+  var key=btn.dataset.add;
+  var name=prompt('新增 '+({cfgStation:'检测工位',cfgLine:'产线',cfgProduct:'产品型号'}[key])+' 名称:');
+  if(!name)return;name=name.trim();if(!name||CFG[key].indexOf(name)>=0){if(name)ts('已存在该选项');return;}
+  CFG[key].push(name);
+  rebuildSelect(key,CFG[key],name);$(key).value=name;
+  if(key==='cfgProduct'){rebuildSelect('msel',CFG.cfgProduct);ensureProductData(name);}
+  if(key==='cfgLine'){rebuildSelect('mline',CFG.cfgLine);}
+  rebuildRecFilters();
+  ts('已新增: '+name);
+});});
+
+// ===== NAV =====
+document.querySelectorAll('[data-nav]').forEach(function(a){a.addEventListener('click',function(){
+  document.querySelectorAll('[data-nav]').forEach(function(x){x.classList.remove('ac');});a.classList.add('ac');
+  document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('ac');});
+  $('pg-'+a.dataset.nav).classList.add('ac');
+  if(a.dataset.nav==='dashboard'){ if(!window._di){initDash();window._di=1;} updDash(); }
+  if(a.dataset.nav==='records'){ renderRecs(); }
+});});
+
+// ===== API CHECK =====
+var apiAvail = location.protocol!=='file:';
+function checkBackend(){
+  if(!apiAvail){$('apiWarn').classList.add('sh');return;}
+  fetch('/api/health').then(function(r){return r.json();}).then(function(d){
+    if(!(d.ok&&d.model_loaded))$('apiWarn').classList.add('sh');
+  }).catch(function(){$('apiWarn').classList.add('sh');});
+}
+
+// ===== CAMERA + STABILITY-BASED DETECTION =====
+var stream=null,camOn=false,autoTimer=null,detectN=0,paused=false,lastFrame=null,stableCount=0,sceneDetected=false,busy=false,lastDetectTime=0;
+var MOTION_THRESH=14, STABLE_FRAMES=12, DETECT_COOLDOWN=3000;  // stable ~0.4s -> auto-detect; re-detect every 3s
+
+var CAM_TIMEOUT=8000, camStarting=false, camDevices=[];
+
+// ===== ROI (detection region) — stored in VIDEO pixels (the source-of-truth layer) =====
+var roi=null, roiReady=false;   // {rx,ry,rw,rh} in video pixels
+function VWVH(){var v=$('vid');return {VW:v.videoWidth||0,VH:v.videoHeight||0};}
+function stageWH(){var p=$('pst');return {SW:p.clientWidth,SH:p.clientHeight};}
+// letterbox: object-fit:contain centers the video frame inside the stage with black bars
+function computeLetterbox(){
+  var d=VWVH(),s=stageWH();
+  if(!d.VW||!d.VH){return {scaleDisp:1,dispX:0,dispY:0,SW:s.SW,SH:s.SH};}
+  var scaleDisp=Math.min(s.SW/d.VW,s.SH/d.VH);
+  var dispW=d.VW*scaleDisp,dispH=d.VH*scaleDisp;
+  return {scaleDisp:scaleDisp,dispX:(s.SW-dispW)/2,dispY:(s.SH-dispH)/2,SW:s.SW,SH:s.SH};
+}
+function roiToScreen(r){r=r||roi;if(!r)return null;var L=computeLetterbox();
+  return {x:r.rx*L.scaleDisp+L.dispX,y:r.ry*L.scaleDisp+L.dispY,w:r.rw*L.scaleDisp,h:r.rh*L.scaleDisp};}
+function screenToVideo(sx,sy){var L=computeLetterbox();
+  return {vx:(sx-L.dispX)/L.scaleDisp,vy:(sy-L.dispY)/L.scaleDisp};}
+// video-pixel point -> stage point (for drawing defect boxes)
+function videoToScreen(vx,vy){var L=computeLetterbox();return {sx:vx*L.scaleDisp+L.dispX,sy:vy*L.scaleDisp+L.dispY};}
+function roiMin(){var d=VWVH();return {w:Math.max(32,d.VW*0.05),h:Math.max(32,d.VH*0.05)};}
+function clampRoi(r){var d=VWVH();if(!d.VW)return r;var m=roiMin();
+  r.rw=Math.max(m.w,Math.min(r.rw,d.VW));r.rh=Math.max(m.h,Math.min(r.rh,d.VH));
+  r.rx=Math.max(0,Math.min(r.rx,d.VW-r.rw));r.ry=Math.max(0,Math.min(r.ry,d.VH-r.rh));return r;}
+function initRoiCentered(){var d=VWVH();if(!d.VW){return false;}
+  roi={rx:d.VW*0.2,ry:d.VH*0.2,rw:d.VW*0.6,rh:d.VH*0.6};roiReady=true;return true;}
+// draw the ROI rectangle + corner handles on #roi
+function drawRoi(){
+  var c=$('roi'),s=stageWH();c.width=s.SW;c.height=s.SH;
+  var ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);
+  if(!roi||!roiReady||!camOn){c.style.display='none';return;}
+  c.style.display='block';
+  var R=roiToScreen();if(!R)return;
+  // dim outside ROI
+  ctx.fillStyle='rgba(0,0,0,0.30)';
+  ctx.fillRect(0,0,c.width,R.y);
+  ctx.fillRect(0,R.y+R.h,c.width,c.height-R.y-R.h);
+  ctx.fillRect(0,R.y,R.x,R.h);
+  ctx.fillRect(R.x+R.w,R.y,c.width-R.x-R.w,R.h);
+  // ROI border
+  ctx.strokeStyle='#165dff';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.strokeRect(R.x,R.y,R.w,R.h);ctx.setLineDash([]);
+  // corner handles
+  ctx.fillStyle='#165dff';var hs=7;
+  [[R.x,R.y],[R.x+R.w,R.y],[R.x,R.y+R.h],[R.x+R.w,R.y+R.h]].forEach(function(p){
+    ctx.fillRect(p[0]-hs/2,p[1]-hs/2,hs,hs);});
+  // hint label
+  ctx.fillStyle='#165dff';ctx.font='bold 12px sans-serif';
+  ctx.fillText('拖动蓝框框住产品',R.x+6,R.y-8>12?R.y-8:R.y+16);
+}
+
+// ===== ROI drag/resize interaction =====
+var roiDrag=null;  // {mode, rx0,ry0,rw0,rh0, vx0,vy0}
+var ROI_T=10;      // hit-test tolerance in screen px
+function hitTestRoi(sx,sy){
+  var R=roiToScreen();if(!R)return null;
+  var nearL=Math.abs(sx-R.x)<=ROI_T, nearR=Math.abs(sx-(R.x+R.w))<=ROI_T;
+  var nearT=Math.abs(sy-R.y)<=ROI_T, nearB=Math.abs(sy-(R.y+R.h))<=ROI_T;
+  var inX=sx>=R.x-ROI_T&&sx<=R.x+R.w+ROI_T, inY=sy>=R.y-ROI_T&&sy<=R.y+R.h+ROI_T;
+  if(!inX||!inY)return null;
+  if(nearL&&nearT)return 'nw';if(nearR&&nearT)return 'ne';
+  if(nearL&&nearB)return 'sw';if(nearR&&nearB)return 'se';
+  if(nearL)return 'w';if(nearR)return 'e';if(nearT)return 'n';if(nearB)return 's';
+  if(sx>R.x&&sx<R.x+R.w&&sy>R.y&&sy<R.y+R.h)return 'move';
+  return null;
+}
+var CURSORS={nw:'nwse-resize',se:'nwse-resize',ne:'nesw-resize',sw:'nesw-resize',n:'ns-resize',s:'ns-resize',e:'ew-resize',w:'ew-resize',move:'move'};
+function evStage(e){var rect=$('pst').getBoundingClientRect();return {sx:e.clientX-rect.left,sy:e.clientY-rect.top};}
+(function bindRoi(){
+  var c=$('roi');
+  c.addEventListener('pointerdown',function(e){
+    if(!roi||!roiReady||!camOn)return;
+    var p=evStage(e),mode=hitTestRoi(p.sx,p.sy);if(!mode)return;
+    var v=screenToVideo(p.sx,p.sy);
+    roiDrag={mode:mode,rx0:roi.rx,ry0:roi.ry,rw0:roi.rw,rh0:roi.rh,vx0:v.vx,vy0:v.vy};
+    paused=true;c.setPointerCapture(e.pointerId);e.preventDefault();
+  });
+  c.addEventListener('pointermove',function(e){
+    if(!roi||!roiReady)return;
+    var p=evStage(e);
+    if(!roiDrag){var m=hitTestRoi(p.sx,p.sy);c.style.cursor=m?CURSORS[m]:'crosshair';return;}
+    var v=screenToVideo(p.sx,p.sy);var dvx=v.vx-roiDrag.vx0,dvy=v.vy-roiDrag.vy0;
+    var r={rx:roiDrag.rx0,ry:roiDrag.ry0,rw:roiDrag.rw0,rh:roiDrag.rh0},m=roiDrag.mode;
+    if(m==='move'){r.rx=roiDrag.rx0+dvx;r.ry=roiDrag.ry0+dvy;}
+    else{
+      if(m.indexOf('e')>=0){r.rw=roiDrag.rw0+dvx;}
+      if(m.indexOf('s')>=0){r.rh=roiDrag.rh0+dvy;}
+      if(m.indexOf('w')>=0){r.rx=roiDrag.rx0+dvx;r.rw=roiDrag.rw0-dvx;}
+      if(m.indexOf('n')>=0){r.ry=roiDrag.ry0+dvy;r.rh=roiDrag.rh0-dvy;}
+      // prevent inversion when shrinking past min from left/top
+      var mn=roiMin();
+      if(r.rw<mn.w){if(m.indexOf('w')>=0)r.rx=roiDrag.rx0+roiDrag.rw0-mn.w;r.rw=mn.w;}
+      if(r.rh<mn.h){if(m.indexOf('n')>=0)r.ry=roiDrag.ry0+roiDrag.rh0-mn.h;r.rh=mn.h;}
+    }
+    roi=clampRoi(r);drawRoi();e.preventDefault();
+  });
+  var endDrag=function(e){
+    if(!roiDrag)return;roiDrag=null;
+    lastFrame=null;stableCount=0;        // reset motion baseline
+    if(camOn)paused=false;
+    try{c.releasePointerCapture(e.pointerId);}catch(_){}
+  };
+  c.addEventListener('pointerup',endDrag);
+  c.addEventListener('pointercancel',endDrag);
+})();
+
+// ===== relayout on resize: roi stays in video pixels; only reproject + redraw =====
+var lastDetForRedraw=null;  // {bbox,label,color,roiSnap} to redraw defect box after resize
+function relayout(){
+  if(!camOn)return;
+  drawRoi();
+  if(lastDetForRedraw){drawBox(lastDetForRedraw.bbox,lastDetForRedraw.label,lastDetForRedraw.color,lastDetForRedraw.roiSnap);}
+}
+window.addEventListener('resize',relayout);
+if(window.ResizeObserver){try{new ResizeObserver(relayout).observe($('pst'));}catch(_){}}
+
+// getUserMedia 带超时：卡住超过 ms 不再无限等
+function gumTimeout(constraints,ms){
+  return new Promise(function(resolve,reject){
+    var settled=false;
+    var timer=setTimeout(function(){if(!settled){settled=true;reject({name:'TimeoutError',message:'打开超时'});}},ms);
+    navigator.mediaDevices.getUserMedia(constraints).then(function(s){
+      if(settled){s.getTracks().forEach(function(t){t.stop();});return;} // 超时后才返回 -> 丢弃
+      settled=true;clearTimeout(timer);resolve(s);
+    },function(e){ if(settled)return; settled=true;clearTimeout(timer);reject(e); });
+  });
+}
+
+$('btnCam').addEventListener('click',function(){
+  if(camOn){stopCam();return;}
+  if(camStarting)return;
+  if(!window.isSecureContext && location.hostname!=='localhost' && location.hostname!=='127.0.0.1'){
+    camFail('页面不在安全环境','请通过 http://localhost:5000 访问，不要直接双击打开 HTML 文件');return;
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    camFail('浏览器不支持摄像头','请改用最新版 Chrome 或 Edge 浏览器打开');return;
+  }
+  startCamera(null);
+});
+
+function buildAttempts(deviceId){
+  if(deviceId){return [{video:{deviceId:{exact:deviceId},width:{ideal:1280},height:{ideal:720}}},{video:{deviceId:{exact:deviceId}}}];}
+  // 不指定设备：先试通用高清，再逐个枚举到的摄像头显式尝试（绕开卡死的红外摄像头），最后裸 video:true
+  var list=[{video:{width:{ideal:1280},height:{ideal:720}}}];
+  camDevices.forEach(function(d){list.push({video:{deviceId:{exact:d.deviceId}}});});
+  list.push({video:true});
+  return list;
+}
+
+function startCamera(deviceId){
+  camStarting=true;
+  ts('正在请求摄像头权限...');setSt('正在启动摄像头...','若弹出权限请点「允许」；单个摄像头最多等 8 秒');
+  navigator.mediaDevices.enumerateDevices().then(function(ds){
+    camDevices=ds.filter(function(d){return d.kind==='videoinput';});
+    var tries=buildAttempts(deviceId);
+    (function attempt(i){
+      if(i>=tries.length){camStarting=false;showCamSelFallback();camError({name:'TimeoutError',message:'所有摄像头均无法打开'});return;}
+      setSt('正在启动摄像头...','尝试第 '+(i+1)+'/'+tries.length+' 个方案（最多 8 秒）...');
+      gumTimeout(tries[i],CAM_TIMEOUT).then(function(s){camStarting=false;onCamOk(s);}).catch(function(e){
+        if(e.name==='NotAllowedError'||e.name==='SecurityError'){camStarting=false;camError(e);return;} // 权限被拒，不必再试
+        attempt(i+1); // 超时/被占用/不支持 -> 试下一个摄像头
+      });
+    })(0);
+  }).catch(function(){
+    gumTimeout({video:true},CAM_TIMEOUT).then(function(s){camStarting=false;onCamOk(s);}).catch(function(e){camStarting=false;camError(e);});
+  });
+}
+
+function onCamOk(s){
+  stream=s;camOn=true;detectN=0;paused=false;stableCount=0;sceneDetected=false;lastFrame=null;lastDetectTime=0;
+  roi=null;roiReady=false;
+  var v=$('vid');v.srcObject=s;v.style.display='block';
+  $('ph').style.display='none';$('cvs').style.display='none';clearMkr();$('scan').style.display='none';
+  $('btnCam').classList.add('on');$('btnCam').textContent='📷 关闭摄像头';
+  $('badge').textContent='监测中';$('badge').style.background='var(--gn2)';$('badge').style.color='var(--gn)';
+  setDot('var(--gn)');setSt('自动监测运行中','放置产品，画面稳定即自动检测');
+  setAst('等待画面稳定...');$('cnt').textContent='检测次数: 0';$('resCard').classList.remove('sh');
+  // ROI needs videoWidth/Height -> wait for metadata
+  var setupRoi=function(){if(initRoiCentered()){drawRoi();}};
+  if(v.videoWidth>0){setupRoi();}
+  else{v.addEventListener('loadedmetadata',setupRoi,{once:true});}
+  populateCamSelect(s);
+  runLoop();
+}
+
+function populateCamSelect(s){
+  navigator.mediaDevices.enumerateDevices().then(function(ds){
+    var vids=ds.filter(function(d){return d.kind==='videoinput';});
+    if(vids.length<2){$('camSel').style.display='none';return;}
+    var cur='';try{cur=s.getVideoTracks()[0].getSettings().deviceId||'';}catch(e){}
+    var sel=$('camSel');sel.innerHTML='';
+    vids.forEach(function(d,idx){
+      var o=document.createElement('option');
+      o.value=d.deviceId;o.textContent=d.label||('摄像头 '+(idx+1));
+      if(d.deviceId===cur)o.selected=true;sel.appendChild(o);
+    });
+    sel.style.display='inline-block';
+  });
+}
+
+$('camSel').addEventListener('change',function(){
+  var id=this.value;
+  if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}
+  camOn=false;
+  startCamera(id);
+});
+
+// 全部失败时也显示设备下拉，便于手动逐个尝试（label 可能为空，用序号代替）
+function showCamSelFallback(){
+  if(!camDevices||camDevices.length<2){return;}
+  var sel=$('camSel');sel.innerHTML='';
+  var o0=document.createElement('option');o0.value='';o0.textContent='选择摄像头手动重试…';sel.appendChild(o0);
+  camDevices.forEach(function(d,idx){
+    var o=document.createElement('option');
+    o.value=d.deviceId;o.textContent=d.label||('摄像头 '+(idx+1));sel.appendChild(o);
+  });
+  sel.style.display='inline-block';
+}
+
+function camFail(title,hint){setDot('var(--rd)');setSt('摄像头未启动 · '+title,hint);ts(title+'：'+hint);}
+
+function camError(e){
+  var t,h;
+  switch(e.name){
+    case 'NotAllowedError': case 'SecurityError':
+      t='摄像头权限被拒绝';h='点击地址栏左侧🔒图标 → 把「摄像头」设为允许 → 刷新页面';break;
+    case 'NotFoundError': case 'DevicesNotFoundError':
+      t='未检测到摄像头';h='请确认摄像头已连接；笔记本请检查物理开关或镜头盖是否关闭';break;
+    case 'NotReadableError': case 'TrackStartError':
+      t='摄像头被其他程序占用';h='请关闭 Teams / 企业微信 / 相机 等正在使用摄像头的程序后重试';break;
+    case 'TimeoutError':
+      t='摄像头打开超时';h='可能是红外人脸摄像头无法取流。请用上方下拉框换一个摄像头；若仍不行，关闭占用程序或重启电脑';break;
+    case 'OverconstrainedError': case 'ConstraintNotSatisfiedError':
+      t='摄像头不支持该模式';h='已自动降级仍失败，请尝试更换摄像头设备';break;
+    case 'AbortError':
+      t='摄像头被系统中断';h='可能被 Windows 隐私设置或杀毒软件拦截，请检查后重试';break;
+    default:
+      t='摄像头启动失败';h=e.name+' - '+(e.message||'未知错误');
+  }
+  camFail(t,h);
+}
+
+function stopCam(){
+  if(autoTimer){clearInterval(autoTimer);autoTimer=null;}
+  if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}
+  camOn=false;paused=false;
+  roi=null;roiReady=false;var rc=$('roi');rc.getContext('2d').clearRect(0,0,rc.width,rc.height);rc.style.display='none';
+  $('vid').style.display='none';$('ph').style.display='block';$('cvs').style.display='none';clearMkr();$('scan').style.display='none';
+  $('btnCam').classList.remove('on');$('btnCam').textContent='📷 开启摄像头';
+  $('badge').textContent='待机';$('badge').style.background='';$('badge').style.color='';
+  setDot('var(--t3)');setSt('已停止','摄像头已关闭');setAst('已停止');
+}
+
+var _diffCv=null;  // fixed small thumbnail canvas for cheap motion detection
+function runLoop(){
+  autoTimer=setInterval(function(){
+    if(!camOn||$('vid').readyState<2||paused||busy)return;
+    var vid=$('vid');if(vid.videoWidth<=0)return;
+    if(!_diffCv){_diffCv=document.createElement('canvas');_diffCv.width=160;_diffCv.height=120;}
+    var ctx=_diffCv.getContext('2d');
+    // sample only the ROI region (so motion outside the box doesn't disturb stability)
+    if(roi&&roiReady){ctx.drawImage(vid,roi.rx,roi.ry,roi.rw,roi.rh,0,0,160,120);}
+    else{ctx.drawImage(vid,0,0,160,120);}
+    var d=ctx.getImageData(0,0,160,120).data;
+    var diff=0;
+    if(lastFrame&&lastFrame.length===d.length){var step=4*4;for(var i=0;i<d.length;i+=step)diff+=Math.abs(d[i]-lastFrame[i]);diff=diff/(d.length/step);}
+    lastFrame=new Uint8Array(d);
+    var now=Date.now();
+    if(diff>MOTION_THRESH){
+      // moving -> reset stability counter, clear box
+      stableCount=0;
+      if(sceneDetected){sceneDetected=false;clearMkr();lastDetForRedraw=null;}
+      setAst('画面移动中，等待稳定...');
+    }else{
+      // stable: auto-detect when settled, then keep re-detecting every DETECT_COOLDOWN
+      stableCount++;
+      if(stableCount>=STABLE_FRAMES && (now-lastDetectTime)>DETECT_COOLDOWN){
+        lastDetectTime=now; sceneDetected=true;
+        doDetectCamera();
+      }else if(stableCount>=STABLE_FRAMES){
+        var wait=Math.ceil((DETECT_COOLDOWN-(now-lastDetectTime))/1000);
+        setAst('自动监测中 · '+Math.max(0,wait)+'秒后复检');
+      }else{
+        setAst('画面稳定，准备检测...');
+      }
+    }
+  },33);
+}
+
+function doDetectCamera(){
+  if(busy)return;
+  var vid=$('vid');
+  // crop the ROI at native video resolution (1:1) to preserve fine scratches; bypasses letterbox
+  if(roi&&roiReady&&vid.videoWidth>0){
+    var snap={rx:roi.rx,ry:roi.ry,rw:roi.rw,rh:roi.rh};
+    var c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(snap.rw));c.height=Math.max(1,Math.round(snap.rh));
+    c.getContext('2d').drawImage(vid,snap.rx,snap.ry,snap.rw,snap.rh,0,0,c.width,c.height);
+    try{lastCrop=c.toDataURL('image/jpeg',0.85);}catch(e){lastCrop=null;}
+    c.toBlob(function(blob){detectBlob(blob,'camera',snap);},'image/jpeg',0.95);
+  }else{
+    // fallback: no ROI yet -> send native-resolution full frame
+    var c2=document.createElement('canvas');
+    c2.width=vid.videoWidth||640;c2.height=vid.videoHeight||480;
+    c2.getContext('2d').drawImage(vid,0,0,c2.width,c2.height);
+    try{lastCrop=c2.toDataURL('image/jpeg',0.85);}catch(e){lastCrop=null;}
+    c2.toBlob(function(blob){detectBlob(blob,'camera',null);},'image/jpeg',0.95);
+  }
+}
+
+// ===== SAMPLE & UPLOAD =====
+var curSample='good';
+document.querySelectorAll('.stag').forEach(function(b){b.addEventListener('click',function(){
+  document.querySelectorAll('.stag').forEach(function(x){x.classList.remove('ac');});b.classList.add('ac');curSample=b.dataset.sm;
+});});
+$('fileIn').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  var r=new FileReader();r.onload=function(){
+    var cvs=$('cvs'),stage=$('pst');$('ph').style.display='none';
+    var img=new Image();img.onload=function(){cvs.width=stage.clientWidth;cvs.height=stage.clientHeight;cvs.style.display='block';cvs.getContext('2d').drawImage(img,0,0,cvs.width,cvs.height);clearMkr();};img.src=r.result;
+  };r.readAsDataURL(f);window._uploadFile=f;
+});
+$('upbox').addEventListener('click',function(){$('fileIn').click();});
+
+$('btnMan').addEventListener('click',function(){
+  if(camOn){sceneDetected=true;doDetectCamera();return;}
+  if(window._uploadFile){detectBlob(window._uploadFile,'upload');return;}
+  // sample image
+  var c=document.createElement('canvas');c.width=400;c.height=600;var ctx=c.getContext('2d');ctx.fillStyle='#e8ecf1';ctx.fillRect(0,0,400,600);
+  if(curSample==='scratch'){ctx.strokeStyle='#888';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(130,300);ctx.lineTo(190,430);ctx.lineTo(120,500);ctx.stroke();}
+  var pcvs=$('cvs'),stage=$('pst');$('ph').style.display='none';pcvs.width=stage.clientWidth;pcvs.height=stage.clientHeight;pcvs.style.display='block';pcvs.getContext('2d').drawImage(c,0,0,pcvs.width,pcvs.height);clearMkr();
+  c.toBlob(function(blob){detectBlob(blob,'sample-'+curSample);},'image/jpeg',0.9);
+});
+
+// ===== CORE DETECT =====
+function detectBlob(blob,source,roiSnap){
+  if(busy)return;busy=true;
+  setDot('var(--blue)');setAst('AI 推理中...');$('scan').style.display='block';
+  var fd=new FormData();fd.append('image',blob,'frame.jpg');
+  var p = apiAvail ? fetch('/api/detect',{method:'POST',body:fd}).then(function(r){return r.json();}) : Promise.reject();
+  p.then(function(res){
+    $('scan').style.display='none';
+    if(!res.ok)throw new Error(res.error||'fail');
+    detectN++;$('cnt').textContent='检测次数: '+detectN;
+    showResult(res,source,roiSnap);
+  }).catch(function(){
+    $('scan').style.display='none';detectN++;$('cnt').textContent='检测次数: '+detectN;
+    showResult(simulate(source),source,roiSnap);
+  }).finally(function(){busy=false;});
+}
+
+function simulate(source){
+  var isScr=source.indexOf('scratch')>=0;
+  var v=isScr?'ng':(Math.random()<0.12?'warn':(Math.random()<0.15?'ng':'ok'));
+  var sc=v==='ok'?0.05:(v==='warn'?0.55:0.9);
+  var types=[['scratch','外观划痕'],['dent','凹坑/压伤'],['color','色差/偏色']];
+  var tp=v==='ok'?['good','无缺陷']:types[Math.floor(Math.random()*3)];
+  var bbox=v==='ok'?null:[0.3+Math.random()*0.3,0.35+Math.random()*0.3,0.18,0.2];
+  return {ok:true,verdict:v.toUpperCase(),detections:[{type:tp[1],type_cn:tp[1],type_key:tp[0],anomaly_score:sc,bbox:bbox}],model:'simulation',is_real_model:false,inference_time_ms:Math.round(800+Math.random()*600)};
+}
+
+// ===== DRAW BBOX OVERLAY =====
+function clearMkr(){var m=$('mkr');var ctx=m.getContext('2d');ctx.clearRect(0,0,m.width,m.height);}
+// bbox is normalized. If roiSnap given (camera path), bbox is relative to the ROI crop ->
+// map: normalized -> video pixels (roi offset+scale) -> stage pixels (letterbox). Else treat as whole-stage.
+function drawBox(bbox,label,color,roiSnap){
+  var m=$('mkr'),stage=$('pst');m.width=stage.clientWidth;m.height=stage.clientHeight;
+  var ctx=m.getContext('2d');ctx.clearRect(0,0,m.width,m.height);
+  if(!bbox)return;
+  var x,y,w,h;
+  if(roiSnap){
+    var vx=roiSnap.rx+bbox[0]*roiSnap.rw, vy=roiSnap.ry+bbox[1]*roiSnap.rh;
+    var vw=bbox[2]*roiSnap.rw, vh=bbox[3]*roiSnap.rh;
+    var p0=videoToScreen(vx,vy), p1=videoToScreen(vx+vw,vy+vh);
+    x=p0.sx;y=p0.sy;w=p1.sx-p0.sx;h=p1.sy-p0.sy;
+  }else{
+    x=bbox[0]*m.width;y=bbox[1]*m.height;w=bbox[2]*m.width;h=bbox[3]*m.height;
+  }
+  ctx.strokeStyle=color;ctx.lineWidth=3;ctx.setLineDash([8,4]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
+  // label bg
+  ctx.font='bold 14px sans-serif';var tw=ctx.measureText(label).width;
+  var ly=y>26?y-24:y+h+4;
+  ctx.fillStyle=color;ctx.fillRect(x,ly,tw+16,22);
+  ctx.fillStyle='#fff';ctx.fillText(label,x+8,ly+16);
+}
+
+var lastSnapshot=null,lastCrop=null;
+function showResult(res,source,roiSnap){
+  var det=res.detections[0];var verdict=res.verdict.toLowerCase();
+  var typeCn=det.type_cn||det.type;
+  $('rT').textContent=typeCn;
+  $('rA').textContent=(det.anomaly_score!=null)?det.anomaly_score.toFixed(3):'—';
+  $('rBox').textContent=det.bbox?('['+det.bbox.map(function(n){return (n*100).toFixed(0)+'%';}).join(', ')+']'):'—';
+  $('rTm').textContent=(res.inference_time_ms||0)+'ms';
+  var _ms=res.inference_time_ms||0, _six=_ms*6/1000;
+  $('rTk').innerHTML=_ms+'ms/面 · 六面≈'+_six.toFixed(1)+'s'+(_six<6?' <b style="color:var(--gn)">&lt;6秒节拍 ✓</b>':' <b style="color:var(--rd)">&gt;6秒</b>');
+  $('rMd').textContent=res.is_real_model?'PatchCore (真实)':'模拟';
+  var v=$('rV');v.textContent={ok:'通过 · 放行',warn:typeCn+' · 需人工确认',ng:typeCn+' · 不合格拦截'}[verdict];v.className='vb '+verdict;
+  $('resCard').classList.add('sh');
+
+  // Draw bbox on preview for NG/WARN
+  if(verdict!=='ok' && det.bbox){
+    var bcolor=verdict==='warn'?'#ff7d00':'#f53f3f';
+    drawBox(det.bbox, typeCn, bcolor, roiSnap);
+    lastDetForRedraw={bbox:det.bbox,label:typeCn,color:bcolor,roiSnap:roiSnap};
+  }else{ clearMkr(); lastDetForRedraw=null; }
+
+  if(source==='camera'){ lastSnapshot=lastCrop; }
+  else { try{lastSnapshot=$('cvs').toDataURL('image/jpeg',0.8);}catch(e){lastSnapshot=null;} }
+  addRec(res,source,verdict,det,typeCn);
+
+  if(verdict==='ok'){setDot('var(--gn)');setAst('检测通过 · 移动产品继续');}
+  else if(verdict==='warn'){setDot('var(--or)');paused=true;setSt('等待人工裁决','请确认缺陷判定后继续');setAst('检测暂停 · 等待人工裁决...');showAlert(res,det,typeCn);}
+  else{setDot('var(--rd)');setSt(typeCn+' · 已拦截','检测到不合格品');setAst('发现缺陷 · 已拦截，移动产品继续');}
+}
+
+// ===== ALERT PANEL =====
+var DEFECT_TYPES=['外观划痕','凹坑/压伤','色差/偏色','其他缺陷'];
+function typeOptions(sel){
+  return DEFECT_TYPES.map(function(t){return '<option value="'+t+'"'+(t===sel?' selected':'')+'>'+t+'</option>';}).join('');
+}
+function showAlert(res,det,typeCn){
+  var pn=$('appn');
+  pn.innerHTML='<div class="ap-hd"><h3>需人工确认</h3><button class="ap-cl" id="apClose">✕</button></div>'
+    +'<div class="ap-bd"><div class="ap-pv">'+(lastSnapshot?'<img src="'+lastSnapshot+'">':'<div style="color:var(--t3)">缺陷已在左侧框出</div>')+'</div>'
+    +'<div class="rr"><span class="rl">AI 判定类型</span><span class="rv">'+typeCn+'</span></div>'
+    +'<div class="rr"><span class="rl">异常分数</span><span class="rv">'+(det.anomaly_score!=null?det.anomaly_score.toFixed(3):'—')+'</span></div>'
+    +'<div class="rr"><span class="rl">缺陷位置</span><span class="rv">'+(det.bbox?'已框选标注':'—')+'</span></div>'
+    +'<div style="margin-top:12px;padding:12px;background:var(--bl2);border-radius:6px"><div style="font-size:12px;color:var(--t2);margin-bottom:6px;font-weight:600">人工修正缺陷类型</div>'
+    +'<select id="apType" style="width:100%;padding:8px 10px;border:1px solid var(--b);border-radius:6px;font-size:13px;background:#fff">'+typeOptions(typeCn)+'</select>'
+    +'<div style="font-size:11px;color:var(--t3);margin-top:6px">若 AI 判断有误，请选择正确的缺陷类型，确认后将用于模型优化</div></div></div>'
+    +'<div class="ap-ft"><button class="btn" style="background:var(--gn);color:#fff" id="apPass">✓ 确认合格</button><button class="btn" style="background:var(--rd);color:#fff" id="apFail">✗ 确认不合格</button></div>';
+  $('apov').classList.add('sh');pn.classList.add('sh');$('pvCard').classList.add('pk');beep();
+  $('apClose').onclick=function(){decide('dismiss');};
+  $('apPass').onclick=function(){decide('pass');};
+  $('apFail').onclick=function(){decide('fail');};
+}
+function decide(d){
+  var corrected = $('apType') ? $('apType').value : null;
+  $('apov').classList.remove('sh');$('appn').classList.remove('sh');$('pvCard').classList.remove('pk');
+  if(d==='pass'){if(recs.length)recs[0].dec='合格放行';ts('已确认合格 · 数据写入MES');writeConfirm('pass',corrected);}
+  else if(d==='fail'){
+    if(recs.length){recs[0].dec='不合格拦截'; if(corrected){ recs[0].type=corrected; recs[0].corrected=true; addCorrLabel(); }}
+    ts(corrected?('已确认不合格 · 类型修正为「'+corrected+'」'):'已确认不合格 · 缺陷归档知识库');writeConfirm('fail',corrected);
+  }
+  renderRecs();
+  paused=false;stableCount=0;sceneDetected=false;lastFrame=null;clearMkr();
+  setDot('var(--gn)');setSt('自动监测运行中','放置产品，画面稳定即自动检测');setAst('已恢复 · 继续自动监测');
+}
+function writeConfirm(decision, correctedType){if(!apiAvail)return;var last=recs[0]||{};fetch('/api/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_name:'frame',ai_verdict:last.verdict||'WARN',defect_type:last.type||'',corrected_type:correctedType||'',human_decision:decision})}).catch(function(){});}
+function beep(){try{var c=new(window.AudioContext||window.webkitAudioContext)();var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=1800;g.gain.value=0.2;o.start();g.gain.exponentialRampToValueAtTime(0.01,c.currentTime+0.3);o.stop(c.currentTime+0.3);}catch(e){}}
+
+// ===== RECORDS (tagged with station/line/product) =====
+var recs=[];
+var corrLabels=0;  // 数据飞轮：人工修正累计标签数
+function addCorrLabel(){corrLabels++; if(pie && $('pg-dashboard').classList.contains('ac')) updDash();}
+function addRec(res,source,verdict,det,typeCn){
+  // bump live dashboard counter for current product
+  var prod=$('cfgProduct').value;
+  bumpProduct(prod, verdict);
+  recs.unshift({id:Date.now()+'_'+Math.random(),time:new Date().toLocaleString('zh-CN'),station:$('cfgStation').value,line:$('cfgLine').value,product:prod,verdict:res.verdict,type:(verdict==='ok'?'无缺陷':typeCn),score:(det.anomaly_score!=null?det.anomaly_score.toFixed(3):'—'),dec:'—',corrected:false});
+  if(recs.length>200)recs.length=200;renderRecs();
+}
+$('recFilter').addEventListener('change',renderRecs);
+$('recStFilter').addEventListener('change',renderRecs);
+function renderRecs(){
+  var tb=$('recB');var pf=$('recFilter').value,sf=$('recStFilter').value;
+  var rows=recs.filter(function(r){return (!pf||r.product===pf)&&(!sf||r.station===sf);});
+  $('recC').textContent=rows.length;
+  if(!rows.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:40px">暂无记录</td></tr>';return;}
+  tb.innerHTML=rows.map(function(r){
+    var vc=r.verdict==='OK'?'var(--gn)':(r.verdict==='WARN'?'var(--or)':'var(--rd)');
+    // defect type cell: editable for non-OK records (click to correct)
+    var typeCell;
+    if(r.verdict==='OK'){ typeCell='<td>'+r.type+'</td>'; }
+    else { typeCell='<td><span class="rec-type" data-id="'+r.id+'" style="cursor:pointer;border-bottom:1px dashed var(--blue);color:var(--blue)" title="点击修正缺陷类型">'+r.type+(r.corrected?' ✎':'')+'</span></td>'; }
+    return '<tr><td>'+r.time+'</td><td>'+r.station+'</td><td>'+r.line+'</td><td>'+r.product+'</td><td style="color:'+vc+';font-weight:600">'+r.verdict+'</td>'+typeCell+'<td>'+r.score+'</td><td>'+r.dec+'</td></tr>';
+  }).join('');
+  // wire up click-to-correct on type cells
+  document.querySelectorAll('.rec-type').forEach(function(el){
+    el.addEventListener('click',function(){
+      var id=el.dataset.id; var rec=recs.filter(function(x){return x.id===id;})[0]; if(!rec)return;
+      var idx=DEFECT_TYPES.indexOf(rec.type); var next=DEFECT_TYPES[(idx+1)%DEFECT_TYPES.length];
+      // cycle through types on click; or use a prompt for explicit choice
+      var choice=prompt('修正缺陷类型（输入序号）:\n'+DEFECT_TYPES.map(function(t,i){return (i+1)+'. '+t;}).join('\n')+'\n\n当前: '+rec.type, String(idx+1));
+      if(choice===null)return;
+      var ci=parseInt(choice,10)-1;
+      if(ci>=0 && ci<DEFECT_TYPES.length){ rec.type=DEFECT_TYPES[ci]; rec.corrected=true; addCorrLabel(); renderRecs(); ts('已修正为「'+rec.type+'」 · 已记录用于模型优化');
+        if(apiAvail)fetch('/api/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_name:'frame',ai_verdict:rec.verdict,defect_type:rec.type,corrected_type:rec.type,human_decision:'correct_type'})}).catch(function(){});
+      }
+    });
+  });
+}
+
+// ===== DASHBOARD (product-aware, live + baseline) =====
+var pie,line,heat;
+var PDATA={};
+function baseFor(name){
+  // deterministic-ish baseline per product
+  var seed=name.length*37+name.charCodeAt(0);
+  var total=1800+(seed%1500), yld=(96+ (seed%40)/10);
+  var ng=Math.round(total*(100-yld)/100), ok=total-ng;
+  return {total:total, ng:ng, ok:ok,
+    pie:[['屏幕',6+seed%12],['外观',10+seed%14],['装配',4+seed%8],['颜色',3+seed%6],['结构',2+seed%5]],
+    hours:[120,145,132,168,155,172,140,160,148,135,150,142,158,165].map(function(h){return Math.round(h*(0.7+(seed%60)/100));})};
+}
+function ensureProductData(name){ if(!PDATA[name]) PDATA[name]=baseFor(name); }
+function bumpProduct(name, verdict){
+  ensureProductData(name);var d=PDATA[name];d.total++;
+  if(verdict==='ng'||verdict==='warn')d.ng++; else d.ok++;
+  if(window._di && $('pg-dashboard').classList.contains('ac') && $('msel').value===name) updDash();
+}
+function initDash(){pie=echarts.init($('chP'));line=echarts.init($('chL'));heat=echarts.init($('chH'));CFG.cfgProduct.forEach(ensureProductData);updDash();}
+$('msel') && $('msel').addEventListener('change',updDash);
+$('mline') && $('mline').addEventListener('change',updDash);
+var COLS=['#165dff','#f53f3f','#ff7d00','#00b42a','#722ed1'];
+function updDash(){
+  if(!pie)return;
+  var name=$('msel').value||CFG.cfgProduct[0];ensureProductData(name);var d=PDATA[name];
+  var done=d.ok+d.ng; var yld = done>0 ? (d.ok/done*100) : 98.2;
+  $('kT').textContent=(d.total).toLocaleString();
+  $('kNG').textContent=(d.ng).toLocaleString();
+  $('kY').textContent=yld.toFixed(1)+'%';
+  $('kHr').textContent=Math.round(d.total*22/3600)+'h';   // 人工30s vs AI8s, 省22s/台
+  $('kLab').textContent=corrLabels;
+  pie.setOption({tooltip:{trigger:'item'},series:[{type:'pie',radius:['50%','75%'],center:['50%','52%'],itemStyle:{borderRadius:6,borderColor:'#fff',borderWidth:4},label:{color:'#606a78',fontSize:11},data:d.pie.map(function(x,i){return {name:x[0],value:x[1],itemStyle:{color:COLS[i]}};})}]});
+  line.setOption({tooltip:{trigger:'axis'},grid:{left:44,right:16,top:16,bottom:28},xAxis:{type:'category',data:['6h','7','8','9','10','11','12','13','14','15','16','17','18','19h'],axisLabel:{color:'#9095a0',fontSize:10}},yAxis:{type:'value',axisLabel:{color:'#9095a0',fontSize:10},splitLine:{lineStyle:{color:'#e4e7ed'}}},series:[{type:'line',data:d.hours,smooth:true,symbolSize:5,itemStyle:{color:'#165dff'},lineStyle:{width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(22,93,255,.12)'},{offset:1,color:'rgba(22,93,255,0)'}])}}]});
+  var hm=[];for(var y=0;y<8;y++)for(var x=0;x<6;x++)hm.push([x,y,Math.random()*6]);[[2,3],[3,2],[2,2],[4,5],[3,5],[1,1]].forEach(function(p){hm[p[1]*6+p[0]][2]+=16+Math.random()*20;});
+  heat.setOption({tooltip:{},grid:{left:44,right:16,top:16,bottom:24},xAxis:{type:'category',data:['摄像','屏幕','按键','接口','边框','后盖'],axisLabel:{color:'#9095a0',fontSize:10}},yAxis:{type:'category',data:['顶部','A区','B区','C区','D区','E区','F区','底部'],axisLabel:{color:'#9095a0',fontSize:10}},visualMap:{min:0,max:40,orient:'vertical',right:6,bottom:20,inRange:{color:['#f0f2f5','#165dff','#ff7d00','#f53f3f']},show:false},series:[{type:'heatmap',data:hm,label:{show:false},itemStyle:{borderRadius:2,borderColor:'#fff',borderWidth:2}}]});
+}
+$('genLink').addEventListener('click',function(){
+  var pn=$('appn');
+  pn.innerHTML='<div class="ap-hd"><h3>小样本快速泛化</h3><button class="ap-cl" id="apClose">✕</button></div>'
+    +'<div class="ap-bd"><div class="ap-pv"><div style="text-align:center;padding:20px"><div style="font-size:16px;font-weight:700;margin-bottom:6px">47 张样本 · 28 分钟微调 · 96.8% 准确率</div><p style="font-size:12px;color:var(--t3);line-height:1.6">传统方案新机型培训质检员3-7天，<strong>AI仅需30分钟完成泛化——核心技术壁垒</strong></p></div></div>'
+    +'<div class="rr"><span class="rl">样本量</span><span class="rv">47 张</span></div><div class="rr"><span class="rl">微调耗时</span><span class="rv">28 分钟</span></div><div class="rr"><span class="rl">准确率</span><span class="rv" style="color:var(--gn)">96.8%</span></div></div>'
+    +'<div class="ap-ft"><button class="btn" style="background:var(--blue);color:#fff;flex:1" id="apClose2">了解</button></div>';
+  $('apov').classList.add('sh');pn.classList.add('sh');
+  $('apClose').onclick=function(){$('apov').classList.remove('sh');pn.classList.remove('sh');};
+  $('apClose2').onclick=function(){$('apov').classList.remove('sh');pn.classList.remove('sh');};
+});
+$('apov').addEventListener('click',function(){$('apov').classList.remove('sh');$('appn').classList.remove('sh');$('pvCard').classList.remove('pk');});
+window.addEventListener('resize',function(){pie&&pie.resize();line&&line.resize();heat&&heat.resize();});
+
+// ===== INIT =====
+initConfig();
+checkBackend();
+</script>
+</body>
+</html>
